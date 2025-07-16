@@ -23,7 +23,9 @@ def main():
     # binarize image
     img = (img > 0.5).astype(np.float32)
 
-    result = astra_wrappers.preprocess_image(img, show_results=True, angles=[0.0, np.pi/2], M=img.shape[0])
+    angles = np.linspace(0, np.pi, 10, endpoint=False)  # 5 angles from 0 to π
+
+    result = astra_wrappers.preprocess_image(img, show_results=True, angles=angles, M=img.shape[0])
     print(f"Input image shape: {img.shape}")
     print(f"Sinogram shape: {result['sinogram'].shape}")
 
@@ -34,6 +36,7 @@ def main():
     np.savetxt(os.path.join(args.outdir, 'reconstruction_binarized.csv'), rec_binarized, delimiter=',')
     np.savetxt(os.path.join(args.outdir, 'reconstruction.csv'), result["rec_fbp"], delimiter=',')
     np.savetxt(os.path.join(args.outdir, 'sinogram.csv'), result["sinogram"], delimiter=',')
+    np.savetxt(os.path.join(args.outdir, 'angles.csv'), result["angles"], delimiter=',')
     print(f"Done ✓  Results saved to: {args.outdir}")
 
 if __name__ == '__main__':
