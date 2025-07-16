@@ -20,8 +20,10 @@ def main():
 
     # Load and normalise the input
     img = ski.img_as_float32(ski.io.imread(args.image_path, as_gray=True))
+    # binarize image
+    img = (img > 0.5).astype(np.float32)
 
-    result = astra_wrappers.preprocess_image(img, show_results=True)
+    result = astra_wrappers.preprocess_image(img, show_results=True, angles=[0.0, np.pi/2])
 
     # Save outputs
     ski.io.imsave(os.path.join(args.outdir, 'reconstruction.tif'), result["rec_fbp"].astype(np.float32))

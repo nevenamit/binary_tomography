@@ -50,10 +50,11 @@ def create_complex_binary_phantom(size=256):
 
   return phantom.astype(np.uint8)
 
-def make_geometries(N: int):
+def make_geometries(N: int, angles=None):
     """Return (vol_geom, proj_geom, M) for an N×N volume."""
     M = int(2 ** np.ceil(np.log2(N * np.sqrt(2))))  # padding width for projections
-    angles = np.random.rand(5) * np.pi             # 5 random angles in [0, π)
+    if angles is None:
+        angles = np.random.rand(5) * np.pi             # 5 random angles in [0, π)
     vol_geom  = astra.create_vol_geom(N, N)
     proj_geom = astra.create_proj_geom('parallel', 1.0, M, angles)
     return vol_geom, proj_geom, M, angles
@@ -95,7 +96,8 @@ def lsqr_fbp_like(sinogram, proj_id, N):
 
 def preprocess_image(
         image,
-        show_results = False
+        show_results = False,
+        angles=None
     ):
 
     # check that image is valid
@@ -105,7 +107,7 @@ def preprocess_image(
     N = img.shape[0]
 
     # Geometry & projector
-    vol_geom, proj_geom, M, angles = make_geometries(N)
+    vol_geom, proj_geom, M, angles = make_geometries(N, angles)
     proj_id = astra.create_projector(
         'strip',
         proj_geom, vol_geom
@@ -115,8 +117,8 @@ def preprocess_image(
     sinogram_id, sinogram = forward_project(img, vol_geom, proj_id)
 
     # --- Reconstructions ------------------------------------------------------
-    rec_art, W  = sart_reconstruction(sinogram_id, vol_geom, proj_id, n_iter=20)
-    rec_fbp  = lsqr_fbp_like(sinogram, proj_id, N)
+    rec_art  = sart_reconstruction(sinogram_id, vol_geom, proj_id, n_iter=20)
+    rec_fbp, W  = lsqr_fbp_like(sinogram, proj_id, N)
 
 
     if show_results == True:
@@ -138,6 +140,7 @@ def preprocess_image(
         "rec_art": rec_art,
         "rec_fbp": rec_fbp,
         "system_matrix": W,
+        "angles" : angles
     }
 
     return result
