@@ -50,9 +50,10 @@ def create_complex_binary_phantom(size=256):
 
   return phantom.astype(np.uint8)
 
-def make_geometries(N: int, angles=None):
+def make_geometries(N: int, angles=None, M=None):
     """Return (vol_geom, proj_geom, M) for an N×N volume."""
-    M = int(2 ** np.ceil(np.log2(N * np.sqrt(2))))  # padding width for projections
+    if M is None:
+        M = int(2 ** np.ceil(np.log2(N * np.sqrt(2))))  # padding width for projections
     if angles is None:
         angles = np.random.rand(5) * np.pi             # 5 random angles in [0, π)
     vol_geom  = astra.create_vol_geom(N, N)
@@ -97,7 +98,8 @@ def lsqr_fbp_like(sinogram, proj_id, N):
 def preprocess_image(
         image,
         show_results = False,
-        angles=None
+        angles=None,
+        M=None
     ):
 
     # check that image is valid
@@ -107,7 +109,7 @@ def preprocess_image(
     N = img.shape[0]
 
     # Geometry & projector
-    vol_geom, proj_geom, M, angles = make_geometries(N, angles)
+    vol_geom, proj_geom, M, angles = make_geometries(N, angles, M=M)
     proj_id = astra.create_projector(
         'strip',
         proj_geom, vol_geom

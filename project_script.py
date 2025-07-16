@@ -23,10 +23,15 @@ def main():
     # binarize image
     img = (img > 0.5).astype(np.float32)
 
-    result = astra_wrappers.preprocess_image(img, show_results=True, angles=[0.0, np.pi/2])
+    result = astra_wrappers.preprocess_image(img, show_results=True, angles=[0.0, np.pi/2], M=img.shape[0])
+    print(f"Input image shape: {img.shape}")
+    print(f"Sinogram shape: {result['sinogram'].shape}")
 
     # Save outputs
     ski.io.imsave(os.path.join(args.outdir, 'reconstruction.tif'), result["rec_fbp"].astype(np.float32))
+    # Binarize the reconstructed image
+    rec_binarized = (result["rec_fbp"] > 0.5).astype(np.float32)
+    np.savetxt(os.path.join(args.outdir, 'reconstruction_binarized.csv'), rec_binarized, delimiter=',')
     np.savetxt(os.path.join(args.outdir, 'reconstruction.csv'), result["rec_fbp"], delimiter=',')
     np.savetxt(os.path.join(args.outdir, 'sinogram.csv'), result["sinogram"], delimiter=',')
     print(f"Done ✓  Results saved to: {args.outdir}")
