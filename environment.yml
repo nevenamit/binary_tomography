@@ -1,0 +1,7 @@
+name: env
+dependencies:
+  - matplotlib
+  - numpy
+  - scipy
+  - scikit-image
+  - conda-forge::astra-toolbox
