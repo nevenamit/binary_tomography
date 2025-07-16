@@ -6,7 +6,8 @@ import skimage as ski
 def plot_images(images  : list,
                 titles  : list,
                 rows    : int = None,
-                cols    : int = None
+                cols    : int = None,
+                width   : int = 6
                 ) -> None:
     """
     Plot a list of images with their respective titles.
@@ -29,6 +30,9 @@ def plot_images(images  : list,
     cols : int, optional
         Number of columns in the plot. If not provided, it will be calculated
         as ceil(n_images / rows). Default is None.
+
+    width : int, optional
+        width of one subplot in inches
     
     Returns
     -------
@@ -44,7 +48,6 @@ def plot_images(images  : list,
     n = len(images)
 
     ratio = images[0].shape[1] / images[0].shape[0]
-    width = 6
     height = width / ratio
 
     if n == 1:
@@ -78,100 +81,6 @@ def plot_images(images  : list,
             ax[i].imshow(images[i])
         ax[i].set_title(titles[i])
         ax[i].axis('off') 
-
-
-def cnotch(filt_type, notch, Nx, Ny, C, r, n=1):
-
-    N_filters = len(C)
     
-    filter_mask = np.zeros([Nx, Ny])
-    
-    if (Ny%2 == 0):
-        y = np.arange(0,Ny) - Ny/2 + 0.5
-    else:
-        y = np.arange(0,Ny) - (Ny-1)/2
-    
-    if (Nx%2 == 0):
-        x = np.arange(0,Nx) - Nx/2 + 0.5
-    else:
-        x = np.arange(0,Nx) - (Nx-1)/2
+    plt.show()
 
-    X, Y = np.meshgrid(x, y, indexing='ij')
-    
-    for i in range(0, N_filters):
-        C_current = C[i]
-        
-        if (Ny%2 == 0):
-            y0 = y - C_current[1] + Ny/2 - 0.5
-        else:
-            y0 = y - C_current[1] + (Ny-1)/2
-        
-        if (Nx%2 == 0):
-            x0 = x - C_current[0] + Nx/2 - 0.5
-        else:
-            x0 = x - C_current[0] + (Nx-1)/2
-        
-        X0, Y0 = np.meshgrid(x0, y0, indexing='ij')
-        
-        # D0 = np.sqrt(np.square(X0) + np.square(Y0))
-        D0 = np.hypot(X0, Y0)
-    
-        if filt_type == 'gaussian':
-            filter_mask = filter_mask + \
-                          np.exp(-np.square(D0)/(2*np.square(r)))
-
-        elif filt_type == 'btw':
-            filter_mask = filter_mask + \
-                          1/(1+(D0/r)**(2*n))
-
-        elif filt_type == 'ideal':
-            filter_mask[D0<=r] = 1
-
-        else:
-            print('Greška! Nije podržan tip filtra: ', filt_type)
-            return
-        
-    filter_mask = filter_mask / np.max(filter_mask)
-
-    if notch == 'pass':
-        return filter_mask
-    elif notch == 'reject':
-        return 1 - filter_mask
-    else:
-        return
-
-
-def lpfilter(filt_type, Nx, Ny, sigma, n=1):
-    
-    if (Ny%2 == 0):
-        y = np.arange(0,Ny) - Ny/2 + 0.5
-    else:
-        y = np.arange(0,Ny) - (Ny-1)/2
-    
-    if (Nx%2 == 0):
-        x = np.arange(0,Nx) - Nx/2 + 0.5
-    else:
-        x = np.arange(0,Nx) - (Nx-1)/2
-
-    
-    X, Y = np.meshgrid(x, y, indexing='ij')
-    
-    # D = np.sqrt(np.square(X) + np.square(Y))
-    D = np.hypot(X, Y)
-    
-    if filt_type == 'gaussian':
-        filter_mask = np.exp(-np.square(D)/(2*np.square(sigma)))
-
-    elif filt_type == 'btw':
-        filter_mask = 1/(1+(D/sigma)**(2*n))
-
-    elif filt_type == 'ideal':
-        filter_mask = np.ones([Nx, Ny])
-        filter_mask[D>sigma] = 0
-
-    else:
-        print('Greška! Nije podržan tip filtra: ', filt_type)
-        return
-    
-    # filter_mask = filter_mask / np.max(filter_mask)
-    return filter_mask
