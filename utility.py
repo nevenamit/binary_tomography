@@ -82,5 +82,5 @@ def plot_images(images  : list,
         ax[i].set_title(titles[i])
         ax[i].axis('off') 
     
-    plt.show()
+    # plt.show()
 
