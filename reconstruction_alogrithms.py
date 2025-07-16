@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import binary_erosion, binary_dilation
 
 # --- Parameters---
 params = {
@@ -14,13 +16,14 @@ params = {
 class SimulatedAnnealing:
     def __init__(
             self, objective_function,
-            initial_state, neighbour_function, params,
-            objective_function_args=None
+            X0, neighbour_function, params,
+            objective_function_args=None,
+            neighbour_function_args=None
     ):
         self.objective_function = objective_function
-        self.state = initial_state.copy()
+        self.X = X0.copy()
         self.neighbour_function = neighbour_function
-        self.T_start = params["T_start"]
+        self.T = params["T_start"]
         self.cooling_rate = params["cooling_rate"]
         self.max_iter = params["max_iter"]
         self.epsilon = params["epsilon"]
@@ -28,83 +31,169 @@ class SimulatedAnnealing:
         if "lambda_tv" in params:
             self.lambda_tv = params["lambda_tv"]
         self.objective_function_args = objective_function_args if objective_function_args is not None else {}
-        self.boundary_recalc_freq = params["boundary_recalc_freq"]
+        self.neighbour_function_args = neighbour_function_args if neighbour_function_args is not None else {}
+
+        if "boundary_recalc_freq" in params:
+            self.boundary_recalc_freq = params["boundary_recalc_freq"]
         
+
+        self.N = int(np.sqrt(self.X.shape[0])) # Assuming X0 is a flattened square image
+        if self.N * self.N != self.X.shape[0]:
+            raise ValueError("X0 must be a flattened square image (N*N pixels).")
+
+        self.best_cost = self.objective_function(self.X, *self.objective_function_args)
+        self.current_cost = self.best_cost
+        self.best_X = self.X.copy()
+
+        self.cost_history = [self.best_cost]
+        self.temp_history = [self.T]
+
+        # ovo je malo lose, ali nemam sad vremena da smisljam bolje smiley face
+        self.prob_weights = None 
+
+        if self.verbose:
+            plt.ion()
+            fig, ax = plt.subplots(2, 2, figsize=(5, 5))
+            self.fig = fig
+            self.ax = ax.ravel()
+
+            self.line_plot, = self.ax[0].plot([], [])
+            self.ax[0].set_xlim(0, self.max_iter)
+            self.ax[0].set_ylim(0, self.best_cost * 1.2)
+            self.ax[0].set_xlabel("Iteration")
+            self.ax[0].set_ylabel("Cost")
+            self.ax[0].set_title("Simulated Annealing Progress")
+
+            self.img_plot = self.ax[1].imshow(self.X.reshape(self.N, self.N), cmap='gray', vmin=0, vmax=1)
+            self.ax[1].set_title("Current Image")
+            self.ax[1].axis('off')
+
+            self.ax[2].set_xlim(0, self.max_iter)
+            self.ax[2].set_ylim(0, self.T * 1.2)
+            self.ax[2].set_xlabel("Iteration")
+            self.ax[2].set_ylabel("Temperature")
+            self.ax[2].set_title("Temperature Decay")
+            self.temp_plot, = self.ax[2].plot([], [])
+
+
+            plt.tight_layout()
+            plt.show()
+
+
+    def update_boundaries(self):
+
+        X_2d = self.X.reshape(self.N, self.N)
+
+        selem = np.ones((3, 3), dtype=bool) # 3x3 strukturni element za 8-povezanost
+
+        eroded_X = binary_erosion(X_2d, structure=selem)
+        dilated_X = binary_dilation(X_2d, structure=selem)
+
+        boundary_mask = (X_2d != eroded_X) | (X_2d != dilated_X)
+        temp_boundary_indices = np.where(boundary_mask.ravel())[0].tolist()
+
+        if len(temp_boundary_indices) > 0:
+            self.current_boundary_indices = temp_boundary_indices
+        else:
+            # Rezervni mehanizam: ako nema jasnih granica, vratite se na FBP-ponderisano uzorkovanje
+            # ili nasumično uzorkovanje svih piksela. Uzimamo 10% svih piksela nasumično ponderisano FBP-om.
+            self.current_boundary_indices = np.random.choice(
+                len(self.X), p=self.prob_weights, size=int(len(self.X)*0.1)
+            ).tolist()
+            if self.verbose:
+                print(f"[{self.iteration}] Nema jasne granice, vraćam se na nasumično FBP-ponderisano uzorkovanje.")
+
+
+    def generate_neighbour_edges(self, fbp_flat):
+        if self.prob_weights is None:
+            prob_weights = fbp_flat - fbp_flat.min()
+            prob_weights += 1e-8  # Prevent zeros
+            prob_weights /= prob_weights.sum()
+            self.prob_weights = prob_weights
+
+        # Periodično ažuriranje piksela na granici za efikasnije uzorkovanje
+        if self.iteration % self.boundary_recalc_freq == 0:
+            self.update_boundaries()
+
+        # Odabir piksela za flipovanje: preferiramo granice
+        if len(self.current_boundary_indices) > 0:
+            idx = np.random.choice(self.current_boundary_indices)
+        else:
+            # Sigurnosna mera: trebalo bi biti pokriveno gornjim fallbackom, ali za svaki slučaj
+            idx = np.random.choice(len(self.X), p=self.prob_weights)
+
+
+        neighbour = self.X.copy()
+        # Privremeno flipovanje piksela
+        neighbour[idx] = 1 - neighbour[idx] # Flipovanje piksela (0 na 1, ili 1 na 0)
+
+        return neighbour
+
+
     
     def run(self):
-        for iteration in range(self.max_iter):
-            # Periodično ažuriranje piksela na granici za efikasnije uzorkovanje
-            if iteration % self.boundary_recalc_freq == 0:
-                X_2d = X.reshape(N, N)
+        for self.iteration in range(self.max_iter):
 
-                selem = np.ones((3, 3), dtype=bool) # 3x3 strukturni element za 8-povezanost
+            neighbour = self.neighbour_function(self, *self.neighbour_function_args)
+            neighbour_cost = self.objective_function(self.X, *self.objective_function_args)
 
-                eroded_X = binary_erosion(X_2d, structure=selem)
-                dilated_X = binary_dilation(X_2d, structure=selem)
+            if neighbour_cost < self.current_cost:
+                # always accept better solution
+                self.current_cost = neighbour_cost
+                self.X = neighbour
+                if self.verbose:
+                    print(f"[{self.iteration}] T: {self.T:.6f}, Poboljšana greška: {self.best_cost:.6f}")
 
-                boundary_mask = (X_2d != eroded_X) | (X_2d != dilated_X)
-                temp_boundary_indices = np.where(boundary_mask.ravel())[0].tolist()
+                # check if end
+                if self.best_cost < self.epsilon:
+                    if self.verbose and self.iteration % 500 == 0:
+                        print(f"Dostignuta željena greška < {self.epsilon} u iteraciji {self.iteration}")
+                    break 
 
-                if len(temp_boundary_indices) > 0:
-                    current_boundary_indices = temp_boundary_indices
-                else:
-                    # Rezervni mehanizam: ako nema jasnih granica, vratite se na FBP-ponderisano uzorkovanje
-                    # ili nasumično uzorkovanje svih piksela. Uzimamo 10% svih piksela nasumično ponderisano FBP-om.
-                    current_boundary_indices = np.random.choice(
-                        len(X), p=prob_weights, size=int(len(X)*0.1)
-                    ).tolist()
-                    if verbose:
-                        print(f"[{iteration}] Nema jasne granice, vraćam se na nasumično FBP-ponderisano uzorkovanje.")
-
-            # Odabir piksela za flipovanje: preferiramo granice
-            if len(current_boundary_indices) > 0:
-                idx = np.random.choice(current_boundary_indices)
             else:
-                # Sigurnosna mera: trebalo bi biti pokriveno gornjim fallbackom, ali za svaki slučaj
-                idx = np.random.choice(len(X), p=prob_weights)
-
-
-            # Privremeno flipovanje piksela
-            original_val = X[idx]
-            X[idx] = 1 - original_val # Flipovanje piksela (0 na 1, ili 1 na 0)
-
-            # Izračunavanje greške za flikovanu sliku koristeći funkciju sa TV penalom
-            current_proj_error = proj_error_with_tv(X)
-
-            # --- Simulated Annealing logika za prihvatanje/odbijanje ---
-            if current_proj_error < best_err:
-                # Uvek prihvati bolji potez
-                best_err = current_proj_error
-                best_X = X.copy() # Sačuvaj sliku koja je dala bolju grešku
-                loss_history.append(best_err) # Sačuvaj poboljšani gubitak
-                if verbose:
-                    print(f"[{iteration}] T: {current_T:.6f}, Poboljšana greška: {best_err:.6f}")
-                if best_err < epsilon:
-                    if verbose and iteration % 500 == 0:
-                        print(f"Dostignuta željena greška < {epsilon} u iteraciji {iteration}")
-                    break # Zaustavi se ako je greška ispod epsilona
-            else:
-                # Izračunaj verovatnoću prihvatanja lošijeg poteza
-                delta_E = current_proj_error - best_err # Razlika u grešci (pozitivna za lošiji potez)
+                # accept worse solution with some probability
+                delta_E = neighbour_cost - self.current_cost # Razlika u grešci (pozitivna za lošiji potez)
                 # Koristimo temperaturu iz trenutne iteracije za SA prihvatanje
-                acceptance_probability = np.exp(-delta_E / (current_T + 1e-8)) # Dodato 1e-8 za stabilnost
+                acceptance_probability = np.exp(-delta_E / (self.T + 1e-8)) # Dodato 1e-8 za stabilnost
 
                 if np.random.rand() < acceptance_probability:
                     # Prihvati lošiji potez sa određenom verovatnoćom
                     # NEMA REVERTOVANJA: X ostaje flikovan
                     # ALI: best_X i best_err OSTAJU NEPROMENJENI (drže globalno najbolji)
-                    if verbose and iteration % 1000 == 0: # Štampa ređe za lošije poteze
-                        print(f"[{iteration}] T: {current_T:.6f}, Prihvaćen lošiji potez. Trenutna greška: {current_proj_error:.6f}")
-                else:
-                    # Odbaci lošiji potez, vrati piksel na originalnu vrednost
-                    X[idx] = original_val
+                    self.X = neighbour
+                    self.current_cost = neighbour_cost
+                    if self.verbose and self.iteration % 1000 == 0: # Štampa ređe za lošije poteze
+                        print(f"[{self.iteration}] T: {self.T:.6f}, Prihvaćen lošiji potez. Trenutna greška: {neighbour_cost:.6f}")
                     
-            # Smanji temperaturu (funkcija hlađenja)
-            current_T *= cooling_rate
 
-            # Opciono: Postavite minimalnu temperaturu da ne bi pala previše nisko
-            # npr. current_T = max(current_T, T_min)
-        
+            if self.current_cost < self.best_cost:
+                self.best_cost = self.current_cost
+                self.best_X = self.X.copy() # Sačuvaj sliku koja je dala bolju grešku
+
+            if self.verbose and self.iteration % 1000 == 0:
+                self.line_plot.set_data(range(self.iteration + 1), self.cost_history)
+                self.ax[0].set_xlim(0, self.iteration+1)
+                self.ax[0].set_ylim(min(self.cost_history)*0.8, max(self.cost_history) * 1.2)
+
+                self.ax[1].imshow(self.X.reshape(self.N, self.N), cmap='gray', vmin=0, vmax=1)
+                self.img_plot.set_data(self.X.reshape(self.N, self.N))
+
+                self.temp_plot.set_data(range(self.iteration+1), self.temp_history)
+                self.ax[2].set_xlim(0, self.iteration+1)
+
+
+                plt.pause(0.01)
+
+            # Smanji temperaturu (funkcija hlađenja)
+            self.T *= self.cooling_rate
+            self.cost_history.append(self.current_cost)
+            self.temp_history.append(self.T)
+
+        if self.verbose:
+            plt.ioff()
+            plt.show()
+
+        return self.best_X.reshape(self.N, self.N), self.best_cost, self.cost_history
 
 
 
