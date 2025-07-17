@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cost_functions
 import new_solution_generators
+import preprocessing
 
 
 def main():
@@ -31,11 +32,8 @@ def main():
     X_init = result["rec_fbp"].ravel()
     angles = result["angles"]
 
-    # Estimate area from sinograms
-    A = int(np.round(sum(sino_target)/len(angles)))
-    # take A highest value pixels
-    X = np.zeros_like(X_init, dtype=np.uint8)
-    X[np.argsort(X_init)[-A:]] = 1
+    X = astra_wrappers.calculate_X0(sino_target, angles, X_init)
+
 
     neighbour_function = new_solution_generators.FlipOnEdge(
         fbp_flat=result["rec_fbp"].ravel(),

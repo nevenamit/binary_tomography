@@ -84,3 +84,19 @@ def plot_images(images  : list,
     
     # plt.show()
 
+
+def fix_img(img):
+    img = ski.img_as_float(img)
+
+    if img.ndim == 3:
+        if img.shape[2] == 3:
+            img = ski.color.rgb2gray(img)
+        elif img.shape[2] == 4:
+            img = ski.color.rgb2gray(img[:,:,:3])
+        
+        # binarize the image
+        img = img > 0.5
+        img = img.astype(np.float32)
+        print(img.shape)
+    return img
+

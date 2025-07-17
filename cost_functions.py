@@ -26,14 +26,14 @@ def _total_variation_2(X):
 
     return tv_x + tv_y
 
-def _l2_norm(X, W, sino_target):
+def l2_norm(X, W, sino_target):
     return np.linalg.norm(W @ X - sino_target)
 
 # --- Funkcija greške sa Totalnom Varijacijom (TV) regularizacijom ---
-def proj_error_with_tv(X, W, sino_target, lambda_tv):
+def l2_and_tv(X, W, sino_target, lambda_tv):
 
-    l2_norm = _l2_norm(X, W, sino_target)
+    l2 = l2_norm(X, W, sino_target)
 
     tv = _total_variation(X)
 
-    return l2_norm + lambda_tv * tv
+    return l2 + lambda_tv * tv

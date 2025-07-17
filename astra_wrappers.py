@@ -5,6 +5,7 @@ import skimage as ski
 from scipy.sparse.linalg import lsqr
 import astra
 import utility as util
+from skimage.draw import ellipse, disk, rectangle
 
 def create_complex_binary_phantom(size=256):
   """Creates a complex binary phantom with diverse shapes.
@@ -49,6 +50,65 @@ def create_complex_binary_phantom(size=256):
   # phantom = gaussian_filter(phantom.astype(float), sigma=1.5) > 0.5
 
   return phantom.astype(np.uint8)
+    
+def generate_ph1(size=256):
+    img = np.zeros((size, size), dtype=np.uint8)
+
+    rr, cc = ellipse(140, 40, 90, 30)
+    img[rr, cc] = 1
+
+    rr, cc = ellipse(200, 150, 80, 30, rotation=np.deg2rad(100))
+    img[rr, cc] = 1
+
+    rr, cc = disk((130, 100), 20)
+    img[rr, cc] = 1 
+
+    return img.astype(np.uint8)
+
+def generate_ph2(size=256):
+    img = np.zeros((size, size), dtype=np.uint8)
+
+    center_y, center_x = 128, 128  
+    outer_radius = 110
+    inner_radius = 85
+
+    outer_rr, outer_cc = disk((center_y, center_x), outer_radius)
+    inner_rr, inner_cc = disk((center_y, center_x), inner_radius)
+
+    img[outer_rr, outer_cc] = 255
+    img[inner_rr, inner_cc] = 0
+
+    centers = [
+        (93, 108), (168, 158), (128, 178), (128, 73), (183, 88)
+    ]
+    radii = [20, 20, 15, 15, 12]
+
+    for (cy, cx), r in zip(centers, radii):
+        rr, cc = disk((cy, cx), r)
+        img[rr, cc] = 255
+
+    return img.astype(np.uint8)
+
+def generate_ph3(size=256):
+    img = np.zeros((size, size), dtype=np.uint8)
+
+    rr, cc = rectangle(start=(50, 50), extent=(50, 50))
+    img[rr, cc] = 1
+
+    rr, cc = disk((150, 50), 20)
+    img[rr, cc] = 1
+
+    rr, cc = ellipse(50, 200, 15, 40)
+    img[rr, cc] = 1
+
+    rr, cc = ellipse(180, 180, 60, 70)
+    img[rr, cc] = 1
+
+    rr, cc = disk((180, 160), 30)
+    img[rr, cc] = 0  
+
+    return img.astype(np.uint8)
+
 
 def make_geometries(N: int, angles=None, M=None):
     """Return (vol_geom, proj_geom, M) for an N×N volume."""
@@ -148,3 +208,14 @@ def preprocess_image(
     return result
 
     
+def calculate_X0(sino_target, angles, init_rec):
+    X_init = init_rec.ravel()
+
+    # Estimate area from sinograms
+    A = int(np.round( np.sum(sino_target) / len(angles) ))
+
+    # take A highest value pixels
+    X = np.zeros_like(X_init, dtype=np.uint8)
+    X[np.argsort(X_init)[-A:]] = 1
+
+    return X

@@ -123,8 +123,8 @@ class SimulatedAnnealing:
     def run(self):
         for self.iteration in range(self.max_iter):
 
-            neighbour = self.neighbour_function(self, *self.neighbour_function_args)
-            neighbour_cost = self.cost_function(self.X, *self.cost_function_args)
+            neighbour = self.neighbour_function(self.X, *self.neighbour_function_args)
+            neighbour_cost = self.cost_function(neighbour, *self.cost_function_args)
 
             if neighbour_cost < self.current_cost:
                 # always accept better solution
