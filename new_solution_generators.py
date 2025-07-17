@@ -30,34 +30,34 @@ class FlipOnEdge:
         if self.call_count % self.boundary_recalc_freq == 0:
             self.update_boundaries(X)
             if self.do_fix:
-                self.fix_high_distance_pixels()
+                self.fix_high_distance_pixels(X)
 
         # flip one pixel from a boundary
         if len(self.current_boundary_indices) > 0:
             idx = np.random.choice(self.current_boundary_indices)
         else:
             # Sigurnosna mera: trebalo bi biti pokriveno gornjim fallbackom, ali za svaki slučaj
-            idx = np.random.choice(len(self.X), p=self.prob_weights)
+            idx = np.random.choice(len(X), p=self.prob_weights)
 
 
-        neighbour = self.X.copy()
+        neighbour = X.copy()
         # Privremeno flipovanje piksela
         neighbour[idx] = 1 - neighbour[idx] # Flipovanje piksela (0 na 1, ili 1 na 0)
 
         self.call_count += 1
         return neighbour
 
-    def fix_high_distance_pixels(self):
+    def fix_high_distance_pixels(self, X):
         for _ in range(self.max_fix_iter):
             # --- Fix high-distance pixels cumulatively ---
-            fixed_mask = np.zeros_like(self.X.shape, dtype=bool)
-            X_2d = self.X.reshape(self.N, self.N)
+            fixed_mask = np.zeros_like(X.shape, dtype=bool)
+            X_2d = X.reshape(self.N, self.N)
             dt = ndi.distance_transform_edt(1 - X_2d)
             dt_flat = dt.ravel()
             candidate_idxs = np.argsort(-dt_flat)
             added = 0
             for i in candidate_idxs:
-                if not fixed_mask[i] and self.X[i] == 1:
+                if not fixed_mask[i] and X[i] == 1:
                     fixed_mask[i] = True
                     added += 1
                 if added >= self.fixed_pixels_per_iter:
@@ -67,7 +67,7 @@ class FlipOnEdge:
             if len(self.current_boundary_indices) > 0:
                 break
             else:
-                self.current_boundary_indices = self.update_boundaries(self.X)
+                self.current_boundary_indices = self.update_boundaries(X)
             
 
 
@@ -95,8 +95,8 @@ class FlipOnEdge:
                 len(X), p=self.prob_weights, size=int(len(X)*0.1)
             ).tolist()
         
+        self.current_boundary_indices = updated_boundary_indices
 
-        return updated_boundary_indices
     
 class DeterioratingHammingDistance:
     def __init__(

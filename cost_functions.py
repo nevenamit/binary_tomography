@@ -92,8 +92,9 @@ def l2_gauss_regularization(
     sino_target : np.ndarray,
     sigma : float, # variance of gaussian used
     r     : int, # radius of window used, size of window is 2r+1 x 2r+1
+    gamma : float,
 ):
     l2 = l2_norm(X, W, sino_target)
     gauss_reg = compute_regularization_term(X.reshape(int(np.sqrt(X.shape[0])), -1), sigma, r)
 
-    return l2 + gauss_reg
+    return l2 + gamma * gauss_reg

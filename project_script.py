@@ -1,4 +1,6 @@
 import argparse
+import matplotlib.pyplot as plt
+
 import tempfile
 import numpy as np
 import skimage as ski
@@ -23,14 +25,20 @@ def main():
     # binarize image
     img = (img > 0.5).astype(np.float32)
 
-    angles = np.linspace(0, np.pi, 10, endpoint=False)  # 5 angles from 0 to π
+    angles = np.linspace(0, np.pi/2, 5)  # 5 angles from 0 to π
 
     result = astra_wrappers.preprocess_image(img, show_results=True, angles=angles, M=img.shape[0])
+    X0 = astra_wrappers.calculate_X0(result['sinogram'].ravel(), angles, result['rec_art'])
+    N = int(np.sqrt(X0.shape[0]))
+    X0 = np.reshape(X0, (N, N))
+    util.plot_images([X0], ['a'])
+    plt.show()
+    
     print(f"Input image shape: {img.shape}")
     print(f"Sinogram shape: {result['sinogram'].shape}")
 
     # Save outputs
-    ski.io.imsave(os.path.join(args.outdir, 'reconstruction.tif'), result["rec_fbp"].astype(np.float32))
+    ski.io.imsave(os.path.join(args.outdir, 'reconstruction.tif'), X0.astype(np.float32))
     # Binarize the reconstructed image
     rec_binarized = (result["rec_fbp"] > 0.5).astype(np.float32)
     np.savetxt(os.path.join(args.outdir, 'reconstruction_binarized.csv'), rec_binarized, delimiter=',')

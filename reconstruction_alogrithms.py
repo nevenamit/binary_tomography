@@ -182,4 +182,4 @@ class SimulatedAnnealing:
             plt.ioff()
             plt.show()
 
-        return self.best_X.reshape(self.N, self.N), self.best_cost, self.cost_history
+        return self.best_X.reshape(self.N, self.N), self.best_cost, self.cost_history, self.temp_history
