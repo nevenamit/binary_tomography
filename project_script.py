@@ -40,7 +40,9 @@ def main():
     print(f"Sinogram shape: {result['sinogram'].shape}")
 
     # Save outputs
-    ski.io.imsave(os.path.join(args.outdir, 'reconstruction.tif'), X0.astype(np.float32))
+    # xx = ski.color.gray2rgb(X0.astype(np.float32))
+    # xx = ski.img_as_ubyte(xx*255)
+    ski.io.imsave(os.path.join(args.outdir, 'reconstruction_X0.png'), ski.img_as_ubyte(X0.astype(np.float32)))
     # Binarize the reconstructed image
     np.savetxt(os.path.join(args.outdir, 'reconstruction_binarized.csv'), X0, delimiter=',')
     np.savetxt(os.path.join(args.outdir, 'sinogram.csv'), result["sinogram"], delimiter=',')

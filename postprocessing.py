@@ -5,17 +5,17 @@ import utility as util
 def morph_open_close(image, structure_size=3, plot=False):
 
     morph_structure = np.ones((structure_size, structure_size), dtype=bool) # 3x3 square
-    opened = ndi.binary_opening(image, structure=morph_structure, iterations=1)
-    closed = ndi.binary_closing(opened, structure=morph_structure, iterations=1)
+    closed = ndi.binary_closing(image, structure=morph_structure, iterations=1)
+    opened = ndi.binary_opening(closed, structure=morph_structure, iterations=1)
 
     if plot:
 
         util.plot_images(
-            [image, opened, closed],
-            titles=['Original Image', 'Opened Image', 'Closed Image']
+            [image, closed, opened],
+            titles=['Original Image', 'closed Image', 'opened Image']
         )
 
-    return closed
+    return opened
 
 
 def proj_by_proj_bin_refinement(X, W, sino_target, epsilon_rel=0.01, max_passes=3):

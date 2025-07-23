@@ -1,4 +1,5 @@
 import numpy as np
+import utility as util
 import scipy.ndimage as ndi
 
 class FlipOnEdge:
@@ -13,8 +14,8 @@ class FlipOnEdge:
 
         self.call_count = 0
 
-        self.N = int(np.sqrt(len(fbp_flat)))
-        if self.N * self.N != len(fbp_flat):
+        self.N = int(np.sqrt(fbp_flat.shape[0]))
+        if self.N * self.N != fbp_flat.shape[0]:
             raise ValueError("fbp_flat must be a flattened square image (N*N pixels).")
 
         self.fixed_mask = np.zeros((self.N, self.N), dtype=bool)
@@ -50,13 +51,16 @@ class FlipOnEdge:
     def fix_high_distance_pixels(self, X):
         for _ in range(self.max_fix_iter):
             # --- Fix high-distance pixels cumulatively ---
-            fixed_mask = np.zeros_like(X.shape, dtype=bool)
+            fixed_mask = np.zeros_like(X, dtype=bool)
             X_2d = X.reshape(self.N, self.N)
             dt = ndi.distance_transform_edt(1 - X_2d)
             dt_flat = dt.ravel()
             candidate_idxs = np.argsort(-dt_flat)
             added = 0
             for i in candidate_idxs:
+                # print(f"Fixing pixel {i} with distance {dt_flat[i]}")
+                # print(f"fixed_mask: {fixed_mask.shape}, X: {X.shape}")
+
                 if not fixed_mask[i] and X[i] == 1:
                     fixed_mask[i] = True
                     added += 1
@@ -69,6 +73,14 @@ class FlipOnEdge:
             else:
                 self.current_boundary_indices = self.update_boundaries(X)
             
+        image = np.zeros_like(X)
+        image[fixed_mask] = 1
+
+        self.N = int(np.sqrt(X.shape[0]))
+        image = image.reshape(self.N, self.N)
+
+        util.plot_images([X.reshape(self.N, self.N), image], ['image', 'fixed pixels'])
+        
 
 
     def update_boundaries(self, X):

@@ -159,7 +159,8 @@ def preprocess_image(
         image,
         show_results = False,
         angles=None,
-        M=None
+        M=None,
+        sigma_percent=None
     ):
 
     # check that image is valid
@@ -177,6 +178,18 @@ def preprocess_image(
 
     # --- Forward projection --------------------------------------------------
     sinogram_id, sinogram = forward_project(img, vol_geom, proj_id)
+
+
+    # Add Gaussian noise
+    if sigma_percent is not None:
+        rng = np.random.default_rng(42)
+        sigma = sigma_percent/100 * np.max(sinogram)
+        print(f"Noise standard deviation is {sigma_percent}%, or {sigma}")
+        sinogram = sinogram + rng.normal(0, sigma, sinogram.shape)
+        sinogram = np.clip(sinogram, 0, None)
+        astra.data2d.store(sinogram_id, sinogram)
+        # astra.data2d.delete(sinogram_id)
+        # sinogram_id = astra.data2d.create('-sino', proj_geom, sinogram=sinogram)
 
     # --- Reconstructions ------------------------------------------------------
     rec_art  = sart_reconstruction(sinogram_id, vol_geom, proj_id, n_iter=20)
